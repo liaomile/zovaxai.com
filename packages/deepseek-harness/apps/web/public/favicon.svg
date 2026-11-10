@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
+  <style>
+    @media (prefers-color-scheme: dark) {
+      rect { stroke: #fff; }
+      path { fill: #fff; }
+    }
+  </style>
+  <rect x="4" y="4" width="40" height="40" rx="12" stroke="#111" stroke-width="2.5" fill="none"/>
+  <path d="M16.5 33V15h4.1c3.9 0 6.3 2.1 6.3 5.1 0 2.05-1.15 3.75-3.1 4.55L30.5 33h-4.4l-4.1-6.7H20.5V33H16.5zm4-11.1h1.1c1.65 0 2.65-.85 2.65-2.15S23.25 17.6 21.6 17.6h-1.1v4.3z" fill="#111"/>
+</svg>

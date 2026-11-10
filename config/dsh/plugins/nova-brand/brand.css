@@ -1,0 +1,12 @@
+/* Nova Studio token overlay (for future client injection / dual-face plugin). */
+:root {
+  --nova-ink: #0e1210;
+  --nova-paper: #f3eee4;
+  --nova-accent: #2ec4a2;
+  --nova-accent-dim: #1f8f76;
+}
+
+/* Prefer teal accent over default purple-leaning chrome when this sheet is applied. */
+body {
+  --dsw-alias-accent: var(--nova-accent);
+}

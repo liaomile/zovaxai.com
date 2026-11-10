@@ -1,0 +1,5 @@
+- dialog "欢迎使用 Nova":
+  - heading "欢迎使用 Nova" [level=2]
+  - paragraph: 这是 Nova 编码智能体产品壳。能力由 Nova Gateway / MCP 提供：对话、技能、审批与自动化都走你们自己的大脑与策略。
+  - paragraph: 继续即可开始使用。密钥与敏感信息请只通过本机安全配置写入，勿粘贴到聊天中。
+  - button "开始使用"

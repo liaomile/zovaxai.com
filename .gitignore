@@ -3,6 +3,11 @@ node_modules/
 dist/
 out/
 *.log
+**/*.tsbuildinfo
+.turbo/
+.cache/
+coverage/
+playwright-report/
 
 # 密钥与环境（红线：禁止入库）
 .env
@@ -11,6 +16,7 @@ out/
 *.pem
 *.key
 *.p12
+credentials.json
 
 # Python 环境（红线：禁止入库）
 .venv/
@@ -19,6 +25,7 @@ __pycache__/
 
 # 用户数据与本地状态（红线：禁止入库）
 data/
+**/storages/
 *.local
 .DS_Store
 

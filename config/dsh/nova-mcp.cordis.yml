@@ -1,0 +1,21 @@
+# Nova AI → product-shell MCP bridge (opt-in overlay).
+# Start via scripts/run_nova_dsh_web.bat so NOVA_ROOT / NOVA_PYTHON are set.
+# Tools appear as mcp__nova__<tool>, e.g. mcp__nova__nova_invoke_skill.
+# Profile full = entire registered skill library callable via nova_invoke_skill.
+- insert:
+    - id: nova-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: nova
+        transport: stdio
+        command: !!js process.env.NOVA_PYTHON?.trim() || 'python'
+        args:
+          - -m
+          - nova_gateway.mcp_stdio_server
+        cwd: !!js process.env.NOVA_ROOT?.trim() || process.cwd()
+        toolCallTimeoutMs: 180000
+        failOnStartupError: false
+        env:
+          NOVA_MCP_PROFILE: !!js process.env.NOVA_MCP_PROFILE?.trim() || 'full'
+          NOVA_ROOT: !!js process.env.NOVA_ROOT?.trim() || process.cwd()
+          PYTHONPATH: !!js process.env.NOVA_ROOT?.trim() || process.cwd()

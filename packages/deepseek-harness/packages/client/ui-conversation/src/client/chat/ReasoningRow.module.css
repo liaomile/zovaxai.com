@@ -1,0 +1,115 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+
+.row {
+  position: relative;
+  overflow: hidden;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  border-radius: 6px;
+  transition: background-color 150ms ease;
+}
+
+.row:hover {
+  background-color: var(--dsw-alias-interactive-bg-hover);
+}
+
+.root[data-state='running'] .row::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 300px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--dsw-alias-bg-base) 60%, transparent) 55%,
+    transparent 100%
+  );
+  animation: dsh-reasoning-row-sweep 2.6s ease-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes dsh-reasoning-row-sweep {
+  0% { left: -300px; }
+  90%, 100% { left: 100%; }
+}
+
+.leading {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.chevron {
+  color: var(--dsw-alias-label-secondary);
+  transition: transform 150ms ease;
+}
+
+.root[data-state='running'] .chevron {
+  opacity: 0.6;
+}
+
+.title {
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+  flex: none;
+  position: relative;
+  z-index: 1;
+}
+
+.separator {
+  flex: none;
+  width: 2px;
+  height: 2px;
+  margin: 0 8px;
+  border-radius: 1px;
+  background: var(--dsw-alias-label-caption);
+  position: relative;
+  z-index: 1;
+}
+
+.summary {
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 14px;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  scroll-behavior: smooth;
+}
+
+.summary[data-follow-end] {
+  text-overflow: clip;
+}
+
+.thinkBody {
+  padding: 8px 0 8px 28px;
+  margin-top: 4px;
+  background-color: var(--dsw-alias-bg-overlay);
+  border-radius: 4px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 22px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+  border-left: 2px solid var(--dsw-alias-border-l2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-state='running'] .row::after {
+    animation: none;
+  }
+}
