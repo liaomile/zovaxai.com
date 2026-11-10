@@ -1,6 +1,7 @@
-﻿> **Vendored into ZovaX**: this directory is the runnable DeepSeek Harness tree.
-> Start via root pnpm dsh:web or scripts/dev-dsh-web.bat with `config/dsh` overlays.
-> Do not put API keys or .env here.
+> **Vendored into ZovaX**：本目录为可运行的 DeepSeek Harness 源码树。
+> 请用根目录 pnpm dsh:web 或 scripts/dev-dsh-web.bat，并加载 config/dsh overlays。
+> 禁止放入 API Key / .env。
+
 # DeepSeek Harness
 
 English | [涓枃](README.zh.md)
