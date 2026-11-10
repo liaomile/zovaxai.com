@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import type { IJob } from '@zovax/platform-api';
 import { api } from '../api/client';
+import { Card, Chip, EmptyState, PrimaryButton } from '../components/ui';
+import { spacing, typography } from '../theme';
 
-/** 任务：巡检任务列表（名称/计划/自治等级/开关状态），点按可立即运行一次（M1 就带，低成本高价值）。 */
+/** 任务：巡检任务以卡片呈现（计划/自治等级/通知策略为标签），每卡带“立即运行”。 */
 export function JobsScreen(): React.JSX.Element {
 	const [items, setItems] = useState<IJob[]>([]);
 	const [refreshing, setRefreshing] = useState(false);
@@ -37,29 +39,28 @@ export function JobsScreen(): React.JSX.Element {
 			data={items}
 			keyExtractor={(j) => j.id}
 			refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
-			ListEmptyComponent={<Text style={styles.empty}>暂无任务。在 IDE 或后端创建巡检任务后会出现在这里。</Text>}
+			ListEmptyComponent={<EmptyState text="暂无任务。在 IDE 或后端创建巡检任务后会出现在这里。" />}
+			contentContainerStyle={styles.list}
 			renderItem={({ item }) => (
-				<TouchableOpacity onPress={() => void onRunNow(item)}>
-					<View style={styles.row}>
-						<Text style={styles.title}>
-							{item.name}
-							{item.enabled ? '' : '（已停用）'}
-						</Text>
-						<Text style={styles.meta}>
-							{item.schedule ?? item.trigger ?? '手动'} · {item.autonomy} · 通知：{item.notifyMode}
-						</Text>
-						<Text style={styles.action}>点按立即运行一次</Text>
+				<Card>
+					<Text style={[typography.sectionTitle, styles.title]}>
+						{item.name}
+						{item.enabled ? '' : '（已停用）'}
+					</Text>
+					<View style={styles.chips}>
+						<Chip text={item.schedule ?? item.trigger ?? '手动触发'} tone="accent" />
+						<Chip text={`自治 ${item.autonomy}`} />
+						<Chip text={`通知 ${item.notifyMode}`} />
 					</View>
-				</TouchableOpacity>
+					<PrimaryButton title="立即运行一次" onPress={() => void onRunNow(item)} disabled={!item.enabled} />
+				</Card>
 			)}
 		/>
 	);
 }
 
 const styles = StyleSheet.create({
-	empty: { textAlign: 'center', color: '#888', marginTop: 48, paddingHorizontal: 24 },
-	row: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
-	title: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-	meta: { fontSize: 13, color: '#666' },
-	action: { fontSize: 12, color: '#0e639c', marginTop: 6 },
+	list: { paddingBottom: spacing.lg },
+	title: { marginBottom: spacing.sm },
+	chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
 });

@@ -53,10 +53,24 @@ function baseUrl(): string {
 
 /* ---------------- Agents Window ---------------- */
 
-async function openAgentsWindow(): Promise<void> {
-  const url = await ensureServer();
+/** 当前面板已渲染的地址：地址未变时不重设 html，避免整页重载丢状态（稳定性） */
+let currentPanelUrl: string | undefined;
+
+async function openAgentsWindow(forceReload = false): Promise<void> {
+  const base = baseUrl();
+  const needsStart = !(await isReachable(base)) && config().get<boolean>('autostart', true);
+  const url = needsStart
+    ? await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: '正在启动 DSH 服务…' },
+        () => ensureServer(),
+      )
+    : await ensureServer();
+
   if (panel) {
-    panel.webview.html = renderHtml(url);
+    if (forceReload || currentPanelUrl !== url) {
+      panel.webview.html = renderHtml(url);
+      currentPanelUrl = url;
+    }
     panel.reveal(vscode.ViewColumn.One);
     pushTheme();
     pushContext();
@@ -68,11 +82,18 @@ async function openAgentsWindow(): Promise<void> {
     localResourceRoots: [],
   });
   panel.webview.html = renderHtml(url);
+  currentPanelUrl = url;
   panel.webview.onDidReceiveMessage((raw: unknown) => {
+    const msg = raw as { zovaxBridge?: string; type?: string };
+    if (msg?.zovaxBridge === 'host' && msg.type === 'zovax/retry') {
+      void openAgentsWindow(true);
+      return;
+    }
     void handlePageMessage(raw);
   });
   panel.onDidDispose(() => {
     panel = undefined;
+    currentPanelUrl = undefined;
   });
   pushTheme();
   pushContext();
@@ -87,7 +108,7 @@ function renderHtml(url: string): string {
     `frame-src ${origin}`,
   ].join('; ');
   const src = withEmbedParams(url);
-  // 中继脚本：只转发带 zovaxBridge 标记、且来源等于 DSH 来源的消息，其余一律丢弃
+  // 宿主脚本：桥中继（只转发带标记且来源可信的消息）＋ 加载态管理（就绪淡出、超时可重试）
   const relay = `
     const vscode = acquireVsCodeApi();
     const expectedOrigin = ${JSON.stringify(origin)};
@@ -101,6 +122,23 @@ function renderHtml(url: string): string {
           frame.contentWindow.postMessage(event.data, expectedOrigin);
         }
       }
+    });
+    const overlay = document.getElementById('zovax-loading');
+    const retryBtn = document.getElementById('zovax-retry');
+    let loaded = false;
+    document.getElementById('agents-frame').addEventListener('load', () => {
+      loaded = true;
+      overlay.style.opacity = '0';
+      setTimeout(() => { overlay.style.display = 'none'; }, 250);
+    });
+    setTimeout(() => {
+      if (!loaded) {
+        document.getElementById('zovax-loading-text').textContent = '服务响应较慢，可能尚未就绪';
+        retryBtn.style.display = 'inline-block';
+      }
+    }, 20000);
+    retryBtn.addEventListener('click', () => {
+      vscode.postMessage({ zovaxBridge: 'host', type: 'zovax/retry' });
     });`;
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -109,11 +147,37 @@ function renderHtml(url: string): string {
 <meta http-equiv="Content-Security-Policy" content="${csp}" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; background: #1e1e1e; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--vscode-editor-background, #1e1e1e); }
   iframe { border: 0; width: 100%; height: 100vh; display: block; }
+  #zovax-loading {
+    position: fixed; inset: 0; display: flex; flex-direction: column; gap: 14px;
+    align-items: center; justify-content: center; z-index: 10;
+    background: var(--vscode-editor-background, #1e1e1e);
+    color: var(--vscode-foreground, #cccccc);
+    font-family: var(--vscode-font-family, sans-serif); font-size: 13px;
+    transition: opacity 0.25s ease;
+  }
+  .zovax-spinner {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 3px solid var(--vscode-widget-border, #3c3c3c);
+    border-top-color: var(--vscode-focusBorder, #4ec9b0);
+    animation: zovax-spin 0.9s linear infinite;
+  }
+  @keyframes zovax-spin { to { transform: rotate(360deg); } }
+  #zovax-retry {
+    display: none; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--vscode-button-border, transparent);
+    background: var(--vscode-button-background, #0e639c);
+    color: var(--vscode-button-foreground, #ffffff); font-size: 13px;
+  }
 </style>
 </head>
 <body>
+<div id="zovax-loading">
+  <div class="zovax-spinner"></div>
+  <div id="zovax-loading-text">正在打开 Agents Window…</div>
+  <button id="zovax-retry">重试</button>
+</div>
 <iframe id="agents-frame" src="${escapeAttr(src)}" title="Agents Window"></iframe>
 <script>${relay}</script>
 </body>

@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import type { IInboxMessage } from '@zovax/platform-api';
 import { api } from '../api/client';
+import { Card, Chip, EmptyState } from '../components/ui';
+import { colors, spacing, typography } from '../theme';
 
-/** 收件箱（首页）：巡检结论/晨报/告警，点击标已读；下拉刷新。推送接入后未读数与角标同步（M2）。 */
+/** 收件箱（首页）：巡检结论/晨报/告警以卡片呈现，未读带圆点与浅色底，点击标已读；下拉刷新。 */
 export function InboxScreen(): React.JSX.Element {
 	const [items, setItems] = useState<IInboxMessage[]>([]);
 	const [refreshing, setRefreshing] = useState(false);
@@ -35,31 +37,36 @@ export function InboxScreen(): React.JSX.Element {
 			data={items}
 			keyExtractor={(m) => m.id}
 			refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
-			ListEmptyComponent={<Text style={styles.empty}>暂无消息。巡检有新结论时会出现在这里。</Text>}
+			ListEmptyComponent={<EmptyState text="暂无消息。巡检有新结论时会出现在这里。" />}
+			contentContainerStyle={styles.list}
 			renderItem={({ item }) => (
-				<TouchableOpacity onPress={() => void onPressItem(item)}>
-					<View style={[styles.row, item.read ? styles.read : styles.unread]}>
-						<Text style={styles.title}>
-							{item.level === 'error' ? '⛔ ' : item.level === 'warning' ? '⚠️ ' : ''}
+				<Card onPress={() => void onPressItem(item)}>
+					<View style={styles.head}>
+						{!item.read ? <View style={styles.unreadDot} /> : null}
+						<Text style={[typography.sectionTitle, styles.title]} numberOfLines={1}>
 							{item.title}
 						</Text>
-						<Text style={styles.body} numberOfLines={3}>
-							{item.body}
-						</Text>
-						<Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
+						{item.level !== 'info' ? (
+							<Chip
+								text={item.level === 'error' ? '错误' : '警告'}
+								tone={item.level === 'error' ? 'danger' : 'warning'}
+							/>
+						) : null}
 					</View>
-				</TouchableOpacity>
+					<Text style={[typography.body, styles.body]} numberOfLines={3}>
+						{item.body}
+					</Text>
+					<Text style={typography.caption}>{new Date(item.createdAt).toLocaleString()}</Text>
+				</Card>
 			)}
 		/>
 	);
 }
 
 const styles = StyleSheet.create({
-	empty: { textAlign: 'center', color: '#888', marginTop: 48, paddingHorizontal: 24 },
-	row: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
-	unread: { backgroundColor: '#f5f9ff' },
-	read: { backgroundColor: '#fff' },
-	title: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-	body: { fontSize: 14, color: '#333' },
-	time: { fontSize: 12, color: '#999', marginTop: 6 },
+	list: { paddingBottom: spacing.lg },
+	head: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+	unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.unreadDot },
+	title: { flex: 1 },
+	body: { marginBottom: spacing.sm, lineHeight: 20 },
 });

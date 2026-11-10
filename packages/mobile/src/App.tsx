@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Button, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { clearToken, loadToken } from './api/client';
+import { TabBar } from './components/ui';
 import { DevicesScreen } from './screens/DevicesScreen';
 import { InboxScreen } from './screens/InboxScreen';
 import { JobsScreen } from './screens/JobsScreen';
 import { LoginScreen } from './screens/LoginScreen';
+import { colors, spacing, typography } from './theme';
 
 type Tab = 'inbox' | 'jobs' | 'devices';
 
+const TABS: { key: Tab; label: string }[] = [
+	{ key: 'inbox', label: '收件箱' },
+	{ key: 'jobs', label: '任务' },
+	{ key: 'devices', label: '设备' },
+];
+
 /**
- * App 根（M1 骨架）：无导航库的极简标签切换——收件箱 / 任务 / 设备。
- * 登录态以令牌存在为准；审批与“我的”（签到/偏好）在 M2/M3 接入（docs/MOBILE.md）。
+ * App 根（M1 骨架）：登录门 + 底部标签（收件箱/任务/设备）。
+ * 审批与“我的”（签到/偏好）在 M2/M3 接入（docs/MOBILE.md）。
  */
 export default function App(): React.JSX.Element {
 	const [signedIn, setSignedIn] = useState<boolean | undefined>(undefined);
@@ -23,61 +31,50 @@ export default function App(): React.JSX.Element {
 	if (signedIn === undefined) {
 		return (
 			<SafeAreaView style={styles.center}>
-				<Text>加载中…</Text>
+				<Text style={typography.sub}>加载中…</Text>
 			</SafeAreaView>
 		);
 	}
 	if (!signedIn) {
 		return (
-			<SafeAreaView style={styles.flex}>
+			<SafeAreaView style={styles.root}>
 				<LoginScreen onSignedIn={() => setSignedIn(true)} />
 			</SafeAreaView>
 		);
 	}
 
+	const current = TABS.find((t) => t.key === tab);
 	return (
-		<SafeAreaView style={styles.flex}>
+		<SafeAreaView style={styles.root}>
 			<View style={styles.header}>
-				<Text style={styles.headerTitle}>
-					{tab === 'inbox' ? '收件箱' : tab === 'jobs' ? '任务' : '设备'}
-				</Text>
-				<Button
-					title="退出"
+				<Text style={typography.title}>{current?.label}</Text>
+				<TouchableOpacity
 					onPress={() => {
 						void clearToken().then(() => setSignedIn(false));
 					}}
-				/>
+				>
+					<Text style={styles.signOut}>退出</Text>
+				</TouchableOpacity>
 			</View>
-			<View style={styles.flex}>
+			<View style={styles.content}>
 				{tab === 'inbox' ? <InboxScreen /> : tab === 'jobs' ? <JobsScreen /> : <DevicesScreen />}
 			</View>
-			<View style={styles.tabBar}>
-				<Button title="收件箱" onPress={() => setTab('inbox')} />
-				<Button title="任务" onPress={() => setTab('jobs')} />
-				<Button title="设备" onPress={() => setTab('devices')} />
-			</View>
+			<TabBar tabs={TABS} active={tab} onChange={(key) => setTab(key as Tab)} />
 		</SafeAreaView>
 	);
 }
 
 const styles = StyleSheet.create({
-	flex: { flex: 1 },
-	center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+	root: { flex: 1, backgroundColor: colors.bg },
+	center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
 	header: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
-		paddingHorizontal: 16,
-		paddingVertical: 8,
-		borderBottomWidth: 1,
-		borderBottomColor: '#eee',
+		paddingHorizontal: spacing.lg,
+		paddingTop: spacing.lg,
+		paddingBottom: spacing.sm,
 	},
-	headerTitle: { fontSize: 18, fontWeight: '700' },
-	tabBar: {
-		flexDirection: 'row',
-		justifyContent: 'space-around',
-		paddingVertical: 8,
-		borderTopWidth: 1,
-		borderTopColor: '#eee',
-	},
+	signOut: { fontSize: 14, color: colors.accent },
+	content: { flex: 1 },
 });

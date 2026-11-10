@@ -1,1 +1,48 @@
-{"activationEvents":["onCommand:zovax.openAgentsWindow","onStartupFinished"],"contributes":{"commands":[{"category":"Zovax","command":"zovax.openAgentsWindow","title":"Open Agents Window"}],"configuration":{"properties":{"zovax.agentsWindow.autostart":{"default":true,"description":"打开 Agents Window 时，若 DSH 未在运行则自动在 packages/deepseek-harness 里拉起（pnpm start:web）。","type":"boolean"},"zovax.agentsWindow.openOnStartup":{"default":false,"description":"编辑器启动后自动打开 Agents Window。","type":"boolean"},"zovax.agentsWindow.url":{"default":"http://127.0.0.1:3080","description":"DSH 前端地址（Agents Window 页面）。","type":"string"}},"title":"Zovax Agents Window"}},"description":"Embed the full DeepSeek Harness Agents Window inside the editor (whole page, no external browser).","displayName":"Zovax Agents Window (IDE Embed)","engines":{"vscode":"^1.90.0"},"main":"./dist/extension.js","name":"ide-embed","publisher":"zovax","scripts":{"build":"tsc -p tsconfig.json","watch":"tsc -p tsconfig.json -w"},"version":"0.2.0"}
+{
+  "activationEvents": [
+    "onCommand:zovax.openAgentsWindow",
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "category": "Zovax",
+        "command": "zovax.openAgentsWindow",
+        "title": "Open Agents Window"
+      }
+    ],
+    "configuration": {
+      "properties": {
+        "zovax.agentsWindow.autostart": {
+          "default": true,
+          "description": "打开 Agents Window 时，若 DSH 未在运行则自动在 packages/deepseek-harness 里拉起（pnpm start:web）。",
+          "type": "boolean"
+        },
+        "zovax.agentsWindow.openOnStartup": {
+          "default": false,
+          "description": "编辑器启动后自动打开 Agents Window。",
+          "type": "boolean"
+        },
+        "zovax.agentsWindow.url": {
+          "default": "http://127.0.0.1:3080",
+          "description": "DSH 前端地址（Agents Window 页面）。",
+          "type": "string"
+        }
+      },
+      "title": "Zovax Agents Window"
+    }
+  },
+  "description": "Embed the full DeepSeek Harness Agents Window inside the editor (whole page, no external browser).",
+  "displayName": "Zovax Agents Window (IDE Embed)",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./dist/extension.js",
+  "name": "ide-embed",
+  "publisher": "zovax",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json -w"
+  },
+  "version": "0.3.0"
+}

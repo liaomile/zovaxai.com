@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Alert, Button, Linking, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { exchangeEmailCode, requestEmailCode } from '../api/client';
+import { Field, GhostButton, PrimaryButton } from '../components/ui';
 import { GITHUB_OAUTH_URL } from '../config';
+import { colors, spacing } from '../theme';
 
 /**
  * 登录页：邮箱验证码（请求验证码 -> 输入 -> 换令牌）＋ GitHub OAuth（系统浏览器跳转）。
@@ -44,41 +46,44 @@ export function LoginScreen(props: { onSignedIn: () => void }): React.JSX.Elemen
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Zovax</Text>
-			<Text style={styles.subtitle}>登录后与你的 IDE 同步任务、巡检与审批</Text>
-			<TextInput
-				style={styles.input}
-				placeholder="邮箱"
-				autoCapitalize="none"
-				keyboardType="email-address"
-				value={email}
-				onChangeText={setEmail}
-			/>
-			{codeSent ? (
-				<>
-					<TextInput
-						style={styles.input}
-						placeholder="邮箱验证码"
-						autoCapitalize="none"
-						keyboardType="number-pad"
-						value={code}
-						onChangeText={setCode}
-					/>
-					<Button title={busy ? '登录中…' : '登录'} onPress={onExchange} disabled={busy} />
-				</>
-			) : (
-				<Button title={busy ? '发送中…' : '发送验证码'} onPress={onRequestCode} disabled={busy} />
-			)}
-			<View style={styles.gap} />
-			<Button title="用 GitHub 登录" onPress={() => void Linking.openURL(GITHUB_OAUTH_URL)} />
+			<View style={styles.brand}>
+				<Text style={styles.logo}>✦</Text>
+				<Text style={styles.name}>Zovax</Text>
+				<Text style={styles.tagline}>登录后与你的 IDE 同步任务、巡检与审批</Text>
+			</View>
+			<View style={styles.form}>
+				<Field
+					placeholder="邮箱"
+					autoCapitalize="none"
+					keyboardType="email-address"
+					value={email}
+					onChangeText={setEmail}
+				/>
+				{codeSent ? (
+					<>
+						<Field
+							placeholder="邮箱验证码"
+							autoCapitalize="none"
+							keyboardType="number-pad"
+							value={code}
+							onChangeText={setCode}
+						/>
+						<PrimaryButton title={busy ? '登录中…' : '登录'} onPress={onExchange} disabled={busy} />
+					</>
+				) : (
+					<PrimaryButton title={busy ? '发送中…' : '发送验证码'} onPress={onRequestCode} disabled={busy} />
+				)}
+				<GhostButton title="用 GitHub 登录" onPress={() => void Linking.openURL(GITHUB_OAUTH_URL)} />
+			</View>
 		</View>
 	);
 }
 
 const styles = StyleSheet.create({
-	container: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
-	title: { fontSize: 32, fontWeight: '700', textAlign: 'center' },
-	subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 12 },
-	input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
-	gap: { height: 8 },
+	container: { flex: 1, paddingHorizontal: spacing.xl, justifyContent: 'center', gap: spacing.xxl },
+	brand: { alignItems: 'center', gap: spacing.sm },
+	logo: { fontSize: 40, color: colors.accent },
+	name: { fontSize: 30, fontWeight: '700', color: colors.text },
+	tagline: { fontSize: 14, color: colors.subtext, textAlign: 'center' },
+	form: { gap: spacing.md },
 });

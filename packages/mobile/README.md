@@ -22,3 +22,6 @@ packages/mobile/
 令牌存取生产应从 AsyncStorage 迁 Keychain/Keystore；推送（APNs/安卓聚合）与审批页在 M2。
 
 红线同根 .gitignore：推送证书私钥、签名密钥、.env 一律不入库。
+
+界面（v0.2.0）：引入统一设计系统（src/theme.ts + src/components/ui.tsx）——浅灰底＋白卡片、
+品牌蓝主色、大留白；四个页面与底部标签栏已全部按设计系统重排（卡片、标签、状态圆点、统一按钮）。
