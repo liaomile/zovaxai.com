@@ -6,8 +6,9 @@
 
 | 本仓文件 | fork 落点 | 说明 |
 |---|---|---|
-| `contrib/deepseek/agentsWindow.ts` | `src/vs/workbench/contrib/deepseek/browser/agentsWindow.ts` | “Open Agents Window”命令：编辑器内整页打开 DSH 前端（经内置 Simple Browser），默认 http://127.0.0.1:3080，配置项 `deepseek.agentsWindowUrl`（轻量兜底方案） |
-| `contrib/deepseek/agentLayout.ts` | `src/vs/workbench/contrib/deepseek/browser/agentLayout.ts` | **Agent 形态外壳（深度 fork，docs/DEEP-FORK-UI.md 的 S1）**：agent 布局为默认且持久的显式模式 — 启动隐藏活动栏/主侧边栏/面板/辅助侧栏、全屏打开 Agents Window、Welcome 不再出现（startupEditor 默认覆盖为 none）；命令 “Use Agent Layout”/“Restore Classic Layout” 切换并持久化，配置 `deepseek.agentFirstLayout` 可整体停用。与 agentsWindow.ts 同目录、同一 import 引入 |
+| `contrib/deepseek/agentsWindow.ts` | `src/vs/workbench/contrib/deepseek/browser/agentsWindow.ts` | “Open Agents Window”命令：编辑器内整页打开 DSH 前端（经内置 Simple Browser），默认 http://127.0.0.1:3080，配置项 `deepseek.agentsWindowUrl`（**自 v3 起退为开发调试入口**，产品主界面见 agentEditor.ts） |
+| `contrib/deepseek/agentEditor.ts` | `src/vs/workbench/contrib/deepseek/browser/agentEditor.ts` | **原生 Agent 主界面（产品形态本体）**：workbench 原生 EditorPane（非嵌入、非网页），消息流/思考区/工具卡/审批卡/输入区/状态行原生渲染，数据经 IDeepSeekAgentService（ACP）驱动；资源 `zovax-agent:/home`，由 agentLayout 启动时整体打开 |
+| `contrib/deepseek/agentLayout.ts` | `src/vs/workbench/contrib/deepseek/browser/agentLayout.ts` | **Agent 形态外壳 v3**：启动一个动作内完成 — 隐藏活动栏/主侧边栏/面板/辅助侧栏＋打开原生 Agent 主界面占满窗口，无嵌入、无降级（打开失败如实报错）；Welcome 不出现（startupEditor 默认覆盖为 none）；模式经 “Use Agent Layout”/“Restore Classic Layout” 命令切换并持久化，配置 `deepseek.agentFirstLayout` 可整体停用。与 agentEditor.ts 同目录、同一 import 引入 |
 | `packages/ide-embed`（构建产物 dist + package.json） | `extensions/zovax-ide-embed/` | 融合主路线：VS Code 构建自动扫描 extensions/ 目录成为内置扩展，无官方文件改动；含进程托管、主题/上下文同步与页面桥（docs/FUSION.md） |
 
 同步与生效步骤：
