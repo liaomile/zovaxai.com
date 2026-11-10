@@ -1,17 +1,23 @@
-# contrib/deepseek — 并入 VS Code fork 的落点
+# contrib/deepseek — VS Code fork 补丁源码（本仓为源头）
 
-本目录是 AI 模块进入 VS Code fork 的对接说明。整仓 fork 建立后，模块代码落在：
+自 2026-11-10 起约定：**fork 侧改动先在本仓维护，本地同步进 fork**，不再直接改 fork 仓。
 
-```
-src/vs/workbench/contrib/deepseek/
-├── browser/    # 视图注册、侧边栏聊天视图、命令与配置
-└── common/     # 协议类型（与 packages/harness/src/types.ts 保持一致）
-```
+本目录文件与 fork 落点：
 
-对接步骤（M0→M1）：
+| 本仓文件 | fork 落点 | 说明 |
+|---|---|---|
+| `contrib/deepseek/agentsWindow.ts` | `src/vs/workbench/contrib/deepseek/browser/agentsWindow.ts` | “Open Agents Window”命令：编辑器内整页打开 DSH 前端（经内置 Simple Browser），默认 http://127.0.0.1:3080，配置项 `deepseek.agentsWindowUrl` |
 
-1. 在 fork 中新建上述目录，把 `packages/ai-ui` 的构建产物挂到聊天视图中渲染。
-2. 在 workbench 注册入口 import 本模块（改动登记到 docs/PATCHES.md 第 1 条）。
-3. 实现工具适配层：把 VS Code 的文件服务、终端、诊断、搜索、Git 按
-   `packages/harness/src/tools.ts` 的定义注入 harness 的 ToolExecutor。
-4. API Key 读写走 VS Code SecretStorage，设置项走官方 Configuration 服务。
+同步与生效步骤：
+
+1. 把上表文件拷入 fork 对应路径；
+2. 在 fork 的 deepseek 模块注册入口（`deepseek.contribution`）中 import `agentsWindow`——
+   该入口本身经 `workbench.common.main.ts` 的一行 import 加载（PATCHES #1）；
+3. 重新构建 fork，命令面板应出现 “Open Agents Window”（分类 DeepSeek）；
+4. 先 `pnpm dsh:web` 起 DSH 前端，再在 IDE 里执行该命令验收整页内嵌。
+
+与 `packages/ide-embed/` 的关系：ide-embed 是同一行为的扩展实现（原版 VS Code 调试/演示用），
+两边保持同一命令语义与默认地址；改行为时两边一起改。
+
+官方文件改动登记在 `docs/PATCHES.md`；本目录新增文件不算官方改动，不必登记，
+但其依赖的注册行（如 PATCHES #1）必须保持有效。

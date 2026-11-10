@@ -1,7 +1,27 @@
+# 依赖与构建产物
 node_modules/
 dist/
 out/
 *.log
-.DS_Store
+
+# 密钥与环境（红线：禁止入库）
 .env
 .env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Python 环境（红线：禁止入库）
+.venv/
+venv/
+__pycache__/
+
+# 用户数据与本地状态（红线：禁止入库）
+data/
+*.local
+.DS_Store
+
+# 商业后台私有配置（红线：禁止入库）
+private-config/
+commercial-config/

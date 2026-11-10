@@ -1,0 +1,1 @@
+{"description":"Zovax AI — DeepSeek Harness 整页嵌入 IDE 的 AI 代码编辑器（仓库根：脚本与结构）","name":"zovaxai","private":true,"scripts":{"dev":"node scripts/dev.mjs","dsh:web":"node scripts/dsh-web.mjs"},"version":"0.1.0"}
