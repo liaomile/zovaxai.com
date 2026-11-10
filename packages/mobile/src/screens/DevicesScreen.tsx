@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import type { IDevice } from '@zovax/platform-api';
 import { api } from '../api/client';
-import { Card, EmptyState, Field, PrimaryButton, SectionTitle, StatusDot } from '../components/ui';
+import { Card, EmptyState, Field, ListError, PrimaryButton, SectionTitle, StatusDot } from '../components/ui';
 import { spacing, typography } from '../theme';
 
 /**
@@ -12,12 +12,14 @@ import { spacing, typography } from '../theme';
 export function DevicesScreen(): React.JSX.Element {
 	const [items, setItems] = useState<IDevice[]>([]);
 	const [code, setCode] = useState('');
+	const [error, setError] = useState<string | undefined>(undefined);
 
 	const load = useCallback(async () => {
 		try {
 			setItems(await api.listDevices());
+			setError(undefined);
 		} catch {
-			// 骨架阶段静默
+			setError('设备列表加载失败，请检查网络或后端服务是否可用。');
 		}
 	}, []);
 
@@ -52,10 +54,11 @@ export function DevicesScreen(): React.JSX.Element {
 				</View>
 			</Card>
 			<SectionTitle text="我的设备" />
+			{error ? <ListError message={error} onRetry={() => void load()} /> : null}
 			<FlatList
 				data={items}
 				keyExtractor={(d) => d.id}
-				ListEmptyComponent={<EmptyState text="暂无设备。" />}
+				ListEmptyComponent={error ? null : <EmptyState text="暂无设备。" />}
 				renderItem={({ item }) => (
 					<Card>
 						<View style={styles.deviceHead}>

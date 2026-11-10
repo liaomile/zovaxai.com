@@ -50,6 +50,20 @@ export async function runAcpPrompt(config: IRunnerConfig, promptText: string, cw
 	const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
 	let transcript = '';
 
+	// 子进程异常退出/启动失败时立刻让所有等待失败，避免任务挂到超时才结束（生产事故级细节）
+	const failAll = (err: Error): void => {
+		for (const waiter of pending.values()) {
+			waiter.reject(err);
+		}
+		pending.clear();
+	};
+	child.on('error', (err) => failAll(new Error(`acp process failed to start: ${err.message}`)));
+	child.on('exit', (code) => {
+		if (pending.size > 0) {
+			failAll(new Error(`acp process exited early (code ${code ?? 'unknown'})`));
+		}
+	});
+
 	const send = (method: string, params: Record<string, unknown>): Promise<unknown> => {
 		const id = nextId++;
 		return new Promise((resolve, reject) => {

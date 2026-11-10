@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -119,6 +119,21 @@ export class JsonStore {
 		const tmp = `${this.file}.tmp`;
 		writeFileSync(tmp, JSON.stringify(this.data, null, 2), 'utf-8');
 		renameSync(tmp, this.file);
+	}
+}
+
+/** 审计日志：只追加的 JSONL（谁、何时、做了什么），治理与追责的底账，不随状态文件滚动。 */
+export class AuditLog {
+	private readonly file: string;
+
+	constructor(dataDir: string) {
+		mkdirSync(dataDir, { recursive: true });
+		this.file = join(dataDir, 'audit.jsonl');
+	}
+
+	record(event: string, fields?: Record<string, unknown>): void {
+		const entry = { ts: new Date().toISOString(), event, ...(fields ?? {}) };
+		appendFileSync(this.file, `${JSON.stringify(entry)}\n`, 'utf-8');
 	}
 }
 

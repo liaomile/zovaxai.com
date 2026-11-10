@@ -2,20 +2,22 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import type { IJob } from '@zovax/platform-api';
 import { api } from '../api/client';
-import { Card, Chip, EmptyState, PrimaryButton } from '../components/ui';
+import { Card, Chip, EmptyState, ListError, PrimaryButton } from '../components/ui';
 import { spacing, typography } from '../theme';
 
 /** 任务：巡检任务以卡片呈现（计划/自治等级/通知策略为标签），每卡带“立即运行”。 */
 export function JobsScreen(): React.JSX.Element {
 	const [items, setItems] = useState<IJob[]>([]);
 	const [refreshing, setRefreshing] = useState(false);
+	const [error, setError] = useState<string | undefined>(undefined);
 
 	const load = useCallback(async () => {
 		setRefreshing(true);
 		try {
 			setItems(await api.listJobs());
+			setError(undefined);
 		} catch {
-			// 同 Inbox：骨架阶段静默
+			setError('加载失败，请检查网络或后端服务是否可用。');
 		} finally {
 			setRefreshing(false);
 		}
@@ -39,7 +41,13 @@ export function JobsScreen(): React.JSX.Element {
 			data={items}
 			keyExtractor={(j) => j.id}
 			refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
-			ListEmptyComponent={<EmptyState text="暂无任务。在 IDE 或后端创建巡检任务后会出现在这里。" />}
+			ListEmptyComponent={
+				error ? (
+					<ListError message={error} onRetry={() => void load()} />
+				) : (
+					<EmptyState text="暂无任务。在 IDE 或后端创建巡检任务后会出现在这里。" />
+				)
+			}
 			contentContainerStyle={styles.list}
 			renderItem={({ item }) => (
 				<Card>

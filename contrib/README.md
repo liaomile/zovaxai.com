@@ -7,6 +7,7 @@
 | 本仓文件 | fork 落点 | 说明 |
 |---|---|---|
 | `contrib/deepseek/agentsWindow.ts` | `src/vs/workbench/contrib/deepseek/browser/agentsWindow.ts` | “Open Agents Window”命令：编辑器内整页打开 DSH 前端（经内置 Simple Browser），默认 http://127.0.0.1:3080，配置项 `deepseek.agentsWindowUrl`（轻量兜底方案） |
+| `contrib/deepseek/agentLayout.ts` | `src/vs/workbench/contrib/deepseek/browser/agentLayout.ts` | **Agent 优先默认布局**：首次启动隐藏活动栏/主侧边栏/面板/辅助侧栏并全屏打开 Agents Window（类 Codex 形态）；仅首次套用，命令 “Restore Classic Layout” 可还原，配置 `deepseek.agentFirstLayout` 可关闭。与 agentsWindow.ts 同目录、同一 import 引入 |
 | `packages/ide-embed`（构建产物 dist + package.json） | `extensions/zovax-ide-embed/` | 融合主路线：VS Code 构建自动扫描 extensions/ 目录成为内置扩展，无官方文件改动；含进程托管、主题/上下文同步与页面桥（docs/FUSION.md） |
 
 同步与生效步骤：

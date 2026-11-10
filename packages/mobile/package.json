@@ -19,5 +19,5 @@
     "start": "react-native start",
     "typecheck": "tsc -p tsconfig.json"
   },
-  "version": "0.2.0"
+  "version": "0.2.1"
 }

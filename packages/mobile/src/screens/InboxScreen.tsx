@@ -2,20 +2,22 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import type { IInboxMessage } from '@zovax/platform-api';
 import { api } from '../api/client';
-import { Card, Chip, EmptyState } from '../components/ui';
+import { Card, Chip, EmptyState, ListError } from '../components/ui';
 import { colors, spacing, typography } from '../theme';
 
 /** 收件箱（首页）：巡检结论/晨报/告警以卡片呈现，未读带圆点与浅色底，点击标已读；下拉刷新。 */
 export function InboxScreen(): React.JSX.Element {
 	const [items, setItems] = useState<IInboxMessage[]>([]);
 	const [refreshing, setRefreshing] = useState(false);
+	const [error, setError] = useState<string | undefined>(undefined);
 
 	const load = useCallback(async () => {
 		setRefreshing(true);
 		try {
 			setItems(await api.listInbox());
+			setError(undefined);
 		} catch {
-			// 骨架阶段静默失败（未连上后端时不打扰），生产加错误态
+			setError('加载失败，请检查网络或后端服务是否可用。');
 		} finally {
 			setRefreshing(false);
 		}
@@ -37,7 +39,13 @@ export function InboxScreen(): React.JSX.Element {
 			data={items}
 			keyExtractor={(m) => m.id}
 			refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
-			ListEmptyComponent={<EmptyState text="暂无消息。巡检有新结论时会出现在这里。" />}
+			ListEmptyComponent={
+				error ? (
+					<ListError message={error} onRetry={() => void load()} />
+				) : (
+					<EmptyState text="暂无消息。巡检有新结论时会出现在这里。" />
+				)
+			}
 			contentContainerStyle={styles.list}
 			renderItem={({ item }) => (
 				<Card onPress={() => void onPressItem(item)}>

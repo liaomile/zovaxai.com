@@ -26,6 +26,15 @@ function fieldMatches(field: string, value: number, min: number, max: number): b
 	});
 }
 
+/** 入口校验：五段、每段只含数字与 * / , - 符号；任务入库时调用，坏表达式直接拒绝 */
+export function isValidCron(expression: string): boolean {
+	const fields = expression.trim().split(/\s+/);
+	if (fields.length !== 5) {
+		return false;
+	}
+	return fields.every((f) => /^[\d*,\/-]+$/.test(f));
+}
+
 export function cronMatches(expression: string, date: Date): boolean {
 	const fields = expression.trim().split(/\s+/);
 	if (fields.length !== 5) {

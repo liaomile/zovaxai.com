@@ -112,6 +112,18 @@ export function EmptyState(props: { text: string }): React.JSX.Element {
 	return <Text style={styles.empty}>{props.text}</Text>;
 }
 
+/** 列表错误态：加载失败时给出原因与重试，不再静默空白（生产体验基线） */
+export function ListError(props: { message: string; onRetry: () => void }): React.JSX.Element {
+	return (
+		<View style={styles.errorBox}>
+			<Text style={styles.errorText}>{props.message}</Text>
+			<TouchableOpacity onPress={props.onRetry} style={styles.errorRetry}>
+				<Text style={styles.errorRetryText}>重试</Text>
+			</TouchableOpacity>
+		</View>
+	);
+}
+
 export function SectionTitle(props: { text: string }): React.JSX.Element {
 	return <Text style={[typography.sectionTitle, styles.sectionTitle]}>{props.text}</Text>;
 }
@@ -183,5 +195,25 @@ const styles = StyleSheet.create({
 		paddingHorizontal: spacing.xl,
 		lineHeight: 21,
 	},
+	errorBox: {
+		marginHorizontal: spacing.lg,
+		marginTop: spacing.md,
+		padding: spacing.lg,
+		borderRadius: radius.md,
+		borderWidth: 1,
+		borderColor: colors.danger,
+		backgroundColor: colors.surface,
+		alignItems: 'center',
+		gap: spacing.sm,
+	},
+	errorText: { fontSize: 14, color: colors.danger, textAlign: 'center' },
+	errorRetry: {
+		borderWidth: 1,
+		borderColor: colors.danger,
+		borderRadius: radius.sm,
+		paddingHorizontal: spacing.lg,
+		paddingVertical: spacing.sm,
+	},
+	errorRetryText: { fontSize: 14, color: colors.danger, fontWeight: '600' },
 	sectionTitle: { marginHorizontal: spacing.lg, marginTop: spacing.lg },
 });

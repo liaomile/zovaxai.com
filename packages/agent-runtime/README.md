@@ -24,3 +24,8 @@ curl -H "Authorization: Bearer dev-token" localhost:4390/v1/inbox
 
 注意：真正执行任务需要本机能跑起 DSH（`pnpm dsh --profile acp`，在其 harness 目录内），
 模型凭据走 DSH 自身配置，运行时不接触明文。
+
+生产硬化（v0.2.0，均已实测）：结构化 JSON 日志＋audit.jsonl 审计；连续失败熔断自动停用并告警
+（RUNTIME_FAILURE_THRESHOLD）；DSH 子进程异常退出立即失败不再挂起；SIGTERM/SIGINT 优雅停机；
+配置启动校验（坏端口/无令牌绑外网直接拒绝启动）；令牌常数时间比对、请求体上限、安全响应头；
+/healthz 与 /readyz 探针；任务入库校验 cron 合法性。上线清单见 docs/PRODUCTION.md。

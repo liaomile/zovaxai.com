@@ -1,1 +1,11 @@
-{"description":"Shared platform API contract + typed client used by the IDE, the mobile app and the agent runtime.","main":"dist/index.js","name":"@zovax/platform-api","private":true,"scripts":{"build":"tsc -p tsconfig.json"},"types":"dist/index.d.ts","version":"0.1.0"}
+{
+  "description": "Shared platform API contract + typed client used by the IDE, the mobile app and the agent runtime.",
+  "main": "dist/index.js",
+  "name": "@zovax/platform-api",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "types": "dist/index.d.ts",
+  "version": "0.2.0"
+}

@@ -44,5 +44,5 @@
     "build": "tsc -p tsconfig.json",
     "watch": "tsc -p tsconfig.json -w"
   },
-  "version": "0.3.0"
+  "version": "0.3.1"
 }

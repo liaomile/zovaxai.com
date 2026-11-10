@@ -48,7 +48,18 @@ function config(): vscode.WorkspaceConfiguration {
 
 function baseUrl(): string {
   const url = config().get<string>('url');
-  return url && url.trim() ? url.trim() : DEFAULT_URL;
+  const candidate = url && url.trim() ? url.trim() : DEFAULT_URL;
+  // 配置防呆：只接受 http/https 地址，写错时回落默认并提示，避免面板静默打不开
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return candidate;
+    }
+  } catch {
+    /* 落到下方回落逻辑 */
+  }
+  void vscode.window.showWarningMessage(`zovax.agentsWindow.url 配置无效（${candidate}），已回落 ${DEFAULT_URL}`);
+  return DEFAULT_URL;
 }
 
 /* ---------------- Agents Window ---------------- */
@@ -355,7 +366,12 @@ function startServer(): Promise<string | undefined> {
 
 function stopServer(): void {
   if (serverProcess) {
-    serverProcess.kill();
+    // Windows 上 pnpm 经 shell 拉起的是进程树，只 kill 父进程会留孤儿，整树回收
+    if (process.platform === 'win32' && serverProcess.pid) {
+      spawn('taskkill', ['/pid', String(serverProcess.pid), '/T', '/F']);
+    } else {
+      serverProcess.kill();
+    }
     serverProcess = undefined;
     sessionUrl = undefined;
   }
