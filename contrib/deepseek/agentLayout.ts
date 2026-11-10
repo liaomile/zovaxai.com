@@ -4,20 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Agent 优先默认布局（fork 侧原生模块，同步进 fork 的 contrib/deepseek/browser/）：
+ * Agent 形态外壳（深度 fork 的展示层落点；fork 已冻结基线、自维护更新，不再顾虑上游合并）。
  *
- * 产品形态要求（用户 2026-11-10）：打开 IDE 第一眼就应是全屏的 agent 界面（类 Codex），
- * 不是传统 VS Code 布局把 agent 挤在一个标签页里。因此首次启动时：
- *   - 隐藏活动栏（Parts.ACTIVITYBAR_PART）与主侧边栏（资源管理器等，Parts.SIDEBAR_PART）；
- *   - 隐藏底部面板（Parts.PANEL_PART）与辅助侧栏（Parts.AUXILIARYBAR_PART）；
- *   - 随即打开 Agents Window 占满编辑器区。
+ * 产品形态（用户 2026-11-10 定版）：打开 IDE 就是 DSH 式 agent 界面（类 Codex），
+ * 不是传统 VS Code 布局。因此 agent 布局是本产品的**默认且持久**的形态：
+ *   - 每次启动（除非用户显式切到经典模式）：隐藏活动栏、主侧边栏、底部面板、辅助侧栏，
+ *     并打开 Agents Window 占满整个窗口；
+ *   - Welcome 页不再出现（workbench.startupEditor 默认改为 none，由本模块注册默认值覆盖）；
+ *   - 模式是显式开关并持久化：命令 “Use Agent Layout” / “Restore Classic Layout” 切换并记住，
+ *     不存在“布局被偷偷改回去”的含糊状态；
+ *   - 配置 deepseek.agentFirstLayout=false 可整体停用本模块（例如内部调试经典界面时）；
+ *   - 状态栏与菜单栏保留：agent 的连接状态、账号、命令入口都在这里，是产品的一部分。
  *
- * 纪律：
- *   - 只在首次运行（无标记）时自动套用一次，之后完全尊重用户自己的布局调整，绝不每次启动抢回去；
- *   - 提供命令 “Restore Classic Layout” 一键还原经典布局并停用自动套用；
- *   - 配置项 deepseek.agentFirstLayout=false 可整体关闭本行为；
- *   - 状态栏与菜单栏保留（agent 也需要状态与命令入口），不在隐藏之列。
- * 本文件由 deepseek.contribution 一并 import（复用 PATCHES #1 的那一行），无新增官方文件改动。
+ * 后续的构建级移除（从注册表摘掉活动栏视图集等硬改动）见 docs/DEEP-FORK-UI.md 的 S3，
+ * 在 fork 本地源码上进行；本模块是同步进 fork contrib 的部分，不新增官方文件改动。
  */
 
 import { Disposable } from 'vs/base/common/lifecycle';
@@ -33,10 +33,13 @@ import { ILayoutService, Parts } from 'vs/workbench/services/layout/browser/layo
 import { OPEN_AGENTS_WINDOW_COMMAND } from './agentsWindow';
 
 export const AGENT_FIRST_LAYOUT_CONFIG = 'deepseek.agentFirstLayout';
+export const USE_AGENT_LAYOUT_COMMAND = 'deepseek.useAgentLayout';
 export const RESTORE_CLASSIC_LAYOUT_COMMAND = 'deepseek.restoreClassicLayout';
-const APPLIED_STORAGE_KEY = 'zovax.agentFirstLayout.applied';
+const LAYOUT_MODE_KEY = 'zovax.layoutMode'; // 'agent' | 'classic'；缺省 = agent
+type LayoutMode = 'agent' | 'classic';
 
-Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).registerConfiguration({
+const configurationRegistry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration);
+configurationRegistry.registerConfiguration({
 	id: 'deepseek',
 	type: 'object',
 	title: 'DeepSeek',
@@ -44,12 +47,26 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 		[AGENT_FIRST_LAYOUT_CONFIG]: {
 			type: 'boolean',
 			default: true,
-			description: '首次启动时套用 agent 优先布局：隐藏活动栏与侧边栏，全屏打开 Agents Window（类 Codex 形态）。仅首次生效，之后尊重用户布局。',
+			description: '启用 agent 形态外壳：启动即 agent 界面（隐藏活动栏与侧边栏、全屏 Agents Window）。关闭后回到标准 VS Code 行为。',
+		},
+	},
+});
+// 默认值覆盖：启动不再打开 Welcome 页（agent 界面就是首页）。
+// 冻结基线下这是安全的 fork 手法；若与核心注册冲突未生效，在 fork 的 product/defaults 里兜底同一键。
+configurationRegistry.registerConfiguration({
+	id: 'workbench',
+	type: 'object',
+	title: 'Workbench',
+	properties: {
+		'workbench.startupEditor': {
+			type: 'string',
+			default: 'none',
+			description: 'Zovax 默认覆盖：启动时不打开任何默认编辑器，由 agent 外壳接管首页。',
 		},
 	},
 });
 
-class AgentFirstLayoutContribution extends Disposable implements IWorkbenchContribution {
+class AgentShellContribution extends Disposable implements IWorkbenchContribution {
 	constructor(
 		@ILayoutService private readonly layoutService: ILayoutService,
 		@IStorageService private readonly storageService: IStorageService,
@@ -57,50 +74,70 @@ class AgentFirstLayoutContribution extends Disposable implements IWorkbenchContr
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 	) {
 		super();
-		void this.applyOnFirstRun();
+		void this.applyOnStartup();
 	}
 
-	private async applyOnFirstRun(): Promise<void> {
+	private mode(): LayoutMode {
+		return this.storageService.get(LAYOUT_MODE_KEY, StorageScope.APPLICATION) === 'classic' ? 'classic' : 'agent';
+	}
+
+	private async applyOnStartup(): Promise<void> {
 		if (!this.configurationService.getValue<boolean>(AGENT_FIRST_LAYOUT_CONFIG)) {
 			return;
 		}
-		if (this.storageService.get(APPLIED_STORAGE_KEY, StorageScope.APPLICATION)) {
-			return; // 已套用过：不再干预用户之后的布局
+		if (this.mode() === 'classic') {
+			return; // 用户显式选了经典模式，尊重之
 		}
-		this.hideChrome();
-		this.storageService.store(APPLIED_STORAGE_KEY, '1', StorageScope.APPLICATION, StorageTarget.USER);
+		applyAgentChrome(this.layoutService);
 		try {
 			await this.commandService.executeCommand(OPEN_AGENTS_WINDOW_COMMAND);
 		} catch {
-			/* Agents Window 命令不可用时不阻断启动，布局已套用 */
+			/* Agents Window 不可用时不阻断启动 */
 		}
-	}
-
-	private hideChrome(): void {
-		this.layoutService.setPartHidden(true, Parts.ACTIVITYBAR_PART);
-		this.layoutService.setPartHidden(true, Parts.SIDEBAR_PART);
-		this.layoutService.setPartHidden(true, Parts.PANEL_PART);
-		this.layoutService.setPartHidden(true, Parts.AUXILIARYBAR_PART);
 	}
 }
 
-Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.WorkbenchContributions)
-	.registerWorkbenchContribution(AgentFirstLayoutContribution, LifecyclePhase.Restored);
+function applyAgentChrome(layoutService: ILayoutService): void {
+	layoutService.setPartHidden(true, Parts.ACTIVITYBAR_PART);
+	layoutService.setPartHidden(true, Parts.SIDEBAR_PART);
+	layoutService.setPartHidden(true, Parts.PANEL_PART);
+	layoutService.setPartHidden(true, Parts.AUXILIARYBAR_PART);
+}
 
-CommandsRegistry.registerCommand(RESTORE_CLASSIC_LAYOUT_COMMAND, async (accessor) => {
-	const layoutService = accessor.get(ILayoutService);
-	const storageService = accessor.get(IStorageService);
+function applyClassicChrome(layoutService: ILayoutService): void {
 	layoutService.setPartHidden(false, Parts.ACTIVITYBAR_PART);
 	layoutService.setPartHidden(false, Parts.SIDEBAR_PART);
 	layoutService.setPartHidden(false, Parts.PANEL_PART);
-	// 标记为已处理：还原后不再自动套用 agent 优先布局
-	storageService.store(APPLIED_STORAGE_KEY, '1', StorageScope.APPLICATION, StorageTarget.USER);
+}
+
+Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.WorkbenchContributions)
+	.registerWorkbenchContribution(AgentShellContribution, LifecyclePhase.Restored);
+
+CommandsRegistry.registerCommand(USE_AGENT_LAYOUT_COMMAND, async (accessor) => {
+	const layoutService = accessor.get(ILayoutService);
+	const storageService = accessor.get(IStorageService);
+	const commandService = accessor.get(ICommandService);
+	storageService.store(LAYOUT_MODE_KEY, 'agent', StorageScope.APPLICATION, StorageTarget.USER);
+	applyAgentChrome(layoutService);
+	await commandService.executeCommand(OPEN_AGENTS_WINDOW_COMMAND).catch(() => undefined);
 });
 
-MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
-	command: {
-		id: RESTORE_CLASSIC_LAYOUT_COMMAND,
-		title: { value: 'Restore Classic Layout', original: 'Restore Classic Layout' },
-		category: { value: 'DeepSeek', original: 'DeepSeek' },
-	},
+CommandsRegistry.registerCommand(RESTORE_CLASSIC_LAYOUT_COMMAND, (accessor) => {
+	const layoutService = accessor.get(ILayoutService);
+	const storageService = accessor.get(IStorageService);
+	storageService.store(LAYOUT_MODE_KEY, 'classic', StorageScope.APPLICATION, StorageTarget.USER);
+	applyClassicChrome(layoutService);
 });
+
+for (const [id, title] of [
+	[USE_AGENT_LAYOUT_COMMAND, 'Use Agent Layout'],
+	[RESTORE_CLASSIC_LAYOUT_COMMAND, 'Restore Classic Layout'],
+] as const) {
+	MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
+		command: {
+			id,
+			title: { value: title, original: title },
+			category: { value: 'DeepSeek', original: 'DeepSeek' },
+		},
+	});
+}
