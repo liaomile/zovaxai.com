@@ -1,0 +1,44 @@
+# 巡检任务定义示例（字段口径见 docs/AUTONOMY.md）
+# 通知纪律默认值：notify.mode=on-change —— 无变化不发声，同问题合并，夜间静默。
+
+jobs:
+  - id: repo-ci-watch
+    name: 仓库 CI 巡检
+    schedule: "*/30 * * * *"          # 每 30 分钟（cron 语义，服务端时区）
+    target:
+      repo: liaomile/vscode
+    prompt: >
+      检查最近一轮 CI 结果。若由绿转红，定位失败的 job 与首个报错，
+      给出结论、证据链接与修复建议；无变化则静默结束。
+    tools: [github.read, shell.read]  # 工具白名单（最小权限）
+    autonomy: L0                      # 只报告不动手
+    notify:
+      mode: on-change
+      channels: [inbox, email]
+
+  - id: service-health
+    name: 服务健康巡检
+    schedule: "*/10 * * * *"
+    target:
+      endpoints: ["https://example.com/health"]
+      cert_expiry_warn_days: 14
+    prompt: >
+      探测端点可用性与响应时间，对比基线；证书 14 天内到期则预警。
+      异常时先用便宜模型初筛结论，确认为真异常再深查并通知。
+    tools: [http.probe]
+    autonomy: L2                      # 巡检本身在白名单内自动执行
+    notify:
+      mode: on-change
+      channels: [inbox]
+
+  - id: morning-brief
+    name: 每日晨报
+    schedule: "30 8 * * *"            # 每天 08:30
+    prompt: >
+      汇总昨夜巡检结论、待审批事项（L1 队列）与今日到期事项，
+      生成一封晨报；没有内容就不要发。
+    tools: [jobs.read, memory.read]
+    autonomy: L2
+    notify:
+      mode: always
+      channels: [inbox, email]
