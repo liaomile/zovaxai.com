@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Zovax AI. All rights reserved.
- *  Licensed under the Apache License, Version 2.0. See LICENSE in the project root.
+ *  Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
 /**
@@ -16,8 +16,8 @@
  *   - 配置 deepseek.agentFirstLayout=false 可整体停用本模块（例如内部调试经典界面时）；
  *   - 状态栏与菜单栏保留：agent 的连接状态、账号、命令入口都在这里，是产品的一部分。
  *
- * 后续的构建级移除（从注册表摘掉活动栏视图集等硬改动）见 docs/DEEP-FORK-UI.md 的 S3，
- * 在 fork 本地源码上进行；本模块是同步进 fork contrib 的部分，不新增官方文件改动。
+ * 编译修正（2026-11-10 本地）：ILayoutService → IWorkbenchLayoutService（workbench layoutService
+ * 不导出 ILayoutService，导出的是 refine 后的 IWorkbenchLayoutService）。
  */
 
 import { Disposable } from 'vs/base/common/lifecycle';
@@ -29,7 +29,8 @@ import { IStorageService, StorageScope, StorageTarget } from 'vs/platform/storag
 import { Extensions as ConfigurationExtensions, IConfigurationRegistry } from 'vs/platform/configuration/common/configurationRegistry';
 import { IWorkbenchContribution, IWorkbenchContributionsRegistry, Extensions as WorkbenchExtensions } from 'vs/workbench/common/contributions';
 import { LifecyclePhase } from 'vs/workbench/services/lifecycle/common/lifecycle';
-import { ILayoutService, Parts } from 'vs/workbench/services/layout/browser/layoutService';
+import { IWorkbenchLayoutService, Parts } from 'vs/workbench/services/layout/browser/layoutService';
+import { localize2 } from 'vs/nls';
 import { OPEN_AGENTS_WINDOW_COMMAND } from './agentsWindow';
 
 export const AGENT_FIRST_LAYOUT_CONFIG = 'deepseek.agentFirstLayout';
@@ -51,8 +52,6 @@ configurationRegistry.registerConfiguration({
 		},
 	},
 });
-// 默认值覆盖：启动不再打开 Welcome 页（agent 界面就是首页）。
-// 冻结基线下这是安全的 fork 手法；若与核心注册冲突未生效，在 fork 的 product/defaults 里兜底同一键。
 configurationRegistry.registerConfiguration({
 	id: 'workbench',
 	type: 'object',
@@ -61,14 +60,14 @@ configurationRegistry.registerConfiguration({
 		'workbench.startupEditor': {
 			type: 'string',
 			default: 'none',
-			description: 'Zovax 默认覆盖：启动时不打开任何默认编辑器，由 agent 外壳接管首页。',
+			description: 'ZovaX 默认覆盖：启动时不打开任何默认编辑器，由 agent 外壳接管首页。',
 		},
 	},
 });
 
 class AgentShellContribution extends Disposable implements IWorkbenchContribution {
 	constructor(
-		@ILayoutService private readonly layoutService: ILayoutService,
+		@IWorkbenchLayoutService private readonly layoutService: IWorkbenchLayoutService,
 		@IStorageService private readonly storageService: IStorageService,
 		@ICommandService private readonly commandService: ICommandService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
@@ -86,7 +85,7 @@ class AgentShellContribution extends Disposable implements IWorkbenchContributio
 			return;
 		}
 		if (this.mode() === 'classic') {
-			return; // 用户显式选了经典模式，尊重之
+			return;
 		}
 		applyAgentChrome(this.layoutService);
 		try {
@@ -97,24 +96,24 @@ class AgentShellContribution extends Disposable implements IWorkbenchContributio
 	}
 }
 
-function applyAgentChrome(layoutService: ILayoutService): void {
+function applyAgentChrome(layoutService: IWorkbenchLayoutService): void {
 	layoutService.setPartHidden(true, Parts.ACTIVITYBAR_PART);
 	layoutService.setPartHidden(true, Parts.SIDEBAR_PART);
 	layoutService.setPartHidden(true, Parts.PANEL_PART);
 	layoutService.setPartHidden(true, Parts.AUXILIARYBAR_PART);
 }
 
-function applyClassicChrome(layoutService: ILayoutService): void {
+function applyClassicChrome(layoutService: IWorkbenchLayoutService): void {
 	layoutService.setPartHidden(false, Parts.ACTIVITYBAR_PART);
 	layoutService.setPartHidden(false, Parts.SIDEBAR_PART);
 	layoutService.setPartHidden(false, Parts.PANEL_PART);
 }
 
-Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.WorkbenchContributions)
+Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench)
 	.registerWorkbenchContribution(AgentShellContribution, LifecyclePhase.Restored);
 
 CommandsRegistry.registerCommand(USE_AGENT_LAYOUT_COMMAND, async (accessor) => {
-	const layoutService = accessor.get(ILayoutService);
+	const layoutService = accessor.get(IWorkbenchLayoutService);
 	const storageService = accessor.get(IStorageService);
 	const commandService = accessor.get(ICommandService);
 	storageService.store(LAYOUT_MODE_KEY, 'agent', StorageScope.APPLICATION, StorageTarget.USER);
@@ -123,21 +122,21 @@ CommandsRegistry.registerCommand(USE_AGENT_LAYOUT_COMMAND, async (accessor) => {
 });
 
 CommandsRegistry.registerCommand(RESTORE_CLASSIC_LAYOUT_COMMAND, (accessor) => {
-	const layoutService = accessor.get(ILayoutService);
+	const layoutService = accessor.get(IWorkbenchLayoutService);
 	const storageService = accessor.get(IStorageService);
 	storageService.store(LAYOUT_MODE_KEY, 'classic', StorageScope.APPLICATION, StorageTarget.USER);
 	applyClassicChrome(layoutService);
 });
 
 for (const [id, title] of [
-	[USE_AGENT_LAYOUT_COMMAND, 'Use Agent Layout'],
-	[RESTORE_CLASSIC_LAYOUT_COMMAND, 'Restore Classic Layout'],
+	[USE_AGENT_LAYOUT_COMMAND, localize2('deepseek.useAgentLayout', 'Use Agent Layout')],
+	[RESTORE_CLASSIC_LAYOUT_COMMAND, localize2('deepseek.restoreClassicLayout', 'Restore Classic Layout')],
 ] as const) {
 	MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
 		command: {
 			id,
-			title: { value: title, original: title },
-			category: { value: 'DeepSeek', original: 'DeepSeek' },
+			title,
+			category: localize2('deepseek.category', 'DeepSeek'),
 		},
 	});
 }
