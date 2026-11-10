@@ -1,20 +1,19 @@
-# packages/ide-embed — IDE 内嵌胶水
+# packages/ide-embed — IDE 融合胶水（v2）
 
-把完整 DSH 前端（Agents Window）整页嵌进编辑器的扩展实现，用于：
+把 DSH 与 IDE 融为一体的扩展实现（融合分层与桥协议见 `docs/FUSION.md`）：
 
-- 在原版 VS Code 中调试/演示嵌入效果（F5 启动扩展宿主，执行命令 “Open Agents Window”）；
-- 作为 fork 版 `contrib/deepseek` 原生实现的**行为基准**（同一命令、同一配置语义、同一默认地址）。
+- **进程托管（L1）**：执行 “Open Agents Window” 时先探活 DSH（默认 http://127.0.0.1:3080）；
+  没在跑就自动在 `packages/deepseek-harness` 里 `pnpm start:web` 拉起，解析其就绪地址
+  （含会话 token，与 DSH 桌面端宿主同模式）后打开面板；扩展停用时回收自己拉起的进程。
+  配置：`zovax.agentsWindow.autostart`（默认开）。
+- **整页嵌入（L2）**：WebviewPanel + iframe，`retainContextWhenHidden` 保状态；
+  打开时带 `embed=zovax-ide` 与当前主题参数。
+- **双向桥（L3）**：宿主页中继脚本（校验来源）转发消息——页面可调
+  `zovax/openFile`（编辑器打开文件并定位行）、`zovax/notify`（原生通知）；
+  IDE 向页面推 `zovax/theme`（主题切换实时跟随）与 `zovax/context`（当前文件/工作区）。
+  页面侧接入文件：`bridge/page-bridge.ts`（引入 DSH 的 apps/web 入口即可）。
 
-行为约定：
+打包进 fork：构建产物拷入 fork 的 `extensions/zovax-ide-embed/` 即成内置扩展（见 contrib/README）。
+原版 VS Code 里 F5 启动扩展宿主同样可用。
 
-- 命令：`zovax.openAgentsWindow`，标题 “Open Agents Window”；
-- 默认地址：`http://127.0.0.1:3080`，配置项 `zovax.agentsWindow.url` 可改；
-- 嵌入方式：WebviewPanel + iframe 整页承载，`retainContextWhenHidden` 保状态，不外跳浏览器；
-- 可选：`zovax.agentsWindow.openOnStartup` 启动时自动打开。
-
-构建：`pnpm --filter ide-embed build`（或在本目录 `npm run build`），产物在 `dist/`。
-
-## Nova Agent 参考源（并存）
-
-同目录下的 src/dsh-embed-panel.ts / dsh-sidecar.ts / gents-window.ts 来自产品侧 Nova Agent，
-可作为 fork / 扩展实现对照；当前可运行扩展入口仍是 src/extension.ts。
+构建：`pnpm --filter ide-embed build`，产物在 `dist/`。

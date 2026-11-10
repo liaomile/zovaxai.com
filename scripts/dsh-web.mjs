@@ -2,9 +2,10 @@
 /**
  * 只起 DSH 前端：从 packages/deepseek-harness 拉起 web，监听 127.0.0.1:3080。
  *
- * 对齐点（以项目组提供的 deepseek-harness 初始树为准）：
- * DSH 的 web 由其 CLI 提供（apps/web 的构建产物由 `dsh web` 伺服）。
- * 若提供树的启动方式不同，只改下面 COMMAND 一处即可，其余脚本不受影响。
+ * 已与项目组推入的 DSH 树对齐（@deepseek-ai/dsh-root 0.1.0-rc.7）：
+ * DSH 根 package.json 自带脚本 start:web（= node --import tsx/esm apps/cli/src/bin.ts web），
+ * web 配置默认监听 127.0.0.1:3080（与其桌面端宿主使用的地址一致）。
+ * 若上游改名/改口，只改下面 COMMAND 一处即可，其余脚本不受影响。
  */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -20,7 +21,7 @@ if (!existsSync(harnessDir)) {
   process.exit(1);
 }
 
-const COMMAND = { cmd: 'pnpm', args: ['dsh', 'web'] };
+const COMMAND = { cmd: 'pnpm', args: ['start:web'] };
 
 console.log(`[dsh:web] 在 ${harnessDir} 执行: ${COMMAND.cmd} ${COMMAND.args.join(' ')}（PORT=${PORT}）`);
 const child = spawn(COMMAND.cmd, COMMAND.args, {

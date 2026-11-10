@@ -14,7 +14,8 @@ zovaxai.com/
   scripts/                     开发脚本：dev（起全套）、dsh-web（只起 DSH 前端）
 ```
 
-技术路线：**先整页嵌入可用**（docs/EMBEDDING.md），原生重写（docs/DEEP-INTEGRATION.md）并行推进，不挡嵌入交付。
+技术路线：**先整页嵌入可用**（docs/EMBEDDING.md），进而**融为一体**（docs/FUSION.md：
+进程托管、主题/上下文同步、页面↔IDE 双向桥）；原生重写（docs/DEEP-INTEGRATION.md）并行推进，不挡嵌入交付。
 
 ## 验收标准
 
@@ -49,12 +50,3 @@ IDE 侧两种打开方式（任选其一，行为一致）：
 - 本项目自有代码以 Apache-2.0 发布（见 LICENSE）。
 - `packages/deepseek-harness/` 为 DeepSeek Harness 的 vendored 副本，遵循其上游许可。
 - VS Code 上游代码为 MIT 许可；本产品为独立发行版，不使用 “Visual Studio Code” 名称与图标。
-
-## 本批已填入的可运行内容
-
-- packages/deepseek-harness/：完整 DSH 源码树（不含 
-ode_modules；需 pnpm install）
-- config/dsh/：品牌 / MCP overlay（仅 process.env，无密钥、无会话缓存）
-- packages/ide-embed/src/dsh-*.ts、gents-window.ts：Nova Agent 侧内嵌参考实现（与 extension.ts 并存）
-- docs/OSS-DSH-IDE-CONTRACT.md：协作契约
-- scripts/dev-dsh-web.bat：Windows 一键起 DSH
