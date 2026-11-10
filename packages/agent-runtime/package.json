@@ -1,0 +1,1 @@
+{"description":"Background agent runtime: scheduler + headless DSH (ACP) job runner + patrol inbox API. Skeleton implementing docs/AUTONOMY.md A1.","main":"dist/index.js","name":"@zovax/agent-runtime","private":true,"scripts":{"build":"tsc -p tsconfig.json","start":"tsx src/index.ts"},"type":"commonjs","version":"0.1.0"}

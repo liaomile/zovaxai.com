@@ -9,8 +9,11 @@
 zovaxai.com/
   packages/deepseek-harness/   完整 DSH（vendored，初始树由项目组提供，跟随上游同步）
   packages/ide-embed/          IDE 内嵌胶水扩展（Webview 整页嵌入，可独立在 VS Code 中调试）
+  packages/platform-api/       平台共享契约：IDE / 手机 App / 后台运行时共用的类型与 API 客户端
+  packages/agent-runtime/      后台自治运行时骨架：定时巡检、ACP 无头执行、收件箱触达（docs/AUTONOMY.md）
+  packages/mobile/             手机 App（React Native + TS）：收件箱、任务、审批、扫码配对（docs/MOBILE.md）
   contrib/deepseek/            VS Code fork 侧补丁源码（同步进 fork 的 contrib/deepseek）
-  docs/                        设计文档：EMBEDDING（首要路线）/ DEEP-INTEGRATION（并行）/ PORTING-MAP / ACCOUNT / PATCHES
+  docs/                        设计文档：EMBEDDING / FUSION / AUTONOMY / MOBILE / ACCOUNT / DEEP-INTEGRATION / PORTING-MAP / PATCHES
   scripts/                     开发脚本：dev（起全套）、dsh-web（只起 DSH 前端）
 ```
 
