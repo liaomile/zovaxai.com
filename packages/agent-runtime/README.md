@@ -16,10 +16,10 @@
 pnpm --filter @zovax/agent-runtime build
 RUNTIME_TOKEN=dev-token node packages/agent-runtime/dist/index.js
 # 另开终端：建一个巡检任务并立即触发
-curl -H "Authorization: Bearer dev-token" -X POST localhost:4390/v1/jobs \
+curl -H "Authorization: Bearer <RUNTIME_TOKEN>" -X POST localhost:4390/v1/jobs \
   -d '{"id":"ci-watch","name":"CI 巡检","prompt":"检查仓库 CI 状态并给结论","tools":["github.read"],"autonomy":"L0","notifyMode":"on-change","enabled":true}'
-curl -H "Authorization: Bearer dev-token" -X POST localhost:4390/v1/jobs/ci-watch/run
-curl -H "Authorization: Bearer dev-token" localhost:4390/v1/inbox
+curl -H "Authorization: Bearer <RUNTIME_TOKEN>" -X POST localhost:4390/v1/jobs/ci-watch/run
+curl -H "Authorization: Bearer <RUNTIME_TOKEN>" localhost:4390/v1/inbox
 ```
 
 注意：真正执行任务需要本机能跑起 DSH（`pnpm dsh --profile acp`，在其 harness 目录内），
