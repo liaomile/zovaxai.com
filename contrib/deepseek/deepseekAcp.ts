@@ -42,6 +42,21 @@ export interface IAcpClientOptions {
 	onPermissionRequest?: (request: IAcpPermissionRequest) => Promise<string | null>;
 	/** 每条 session/update 映射后的事件回调 */
 	onUpdate?: (update: DeepSeekSessionUpdate) => void;
+	/**
+	 * 传输层关闭（对端进程退出/通道断开）时调用一次。上层（Agent 服务）据此把
+	 * “已连接”状态收回去，避免进程已死、界面还显示连着（P0 修复，2026-11-12）。
+	 */
+	onTransportClosed?: () => void;
+	/**
+	 * 控制类请求（initialize / session/new / set_config_option 等）的超时毫秒数，
+	 * 默认 30_000。审计实锤：此前全栈无任何超时，对端假死时请求永久挂起。
+	 */
+	requestTimeoutMs?: number;
+	/**
+	 * session/prompt 的超时毫秒数，默认 0 = 不设上限：一回合的时长本身无上界
+	 * （长任务合法），进程真死由 onClose 的 fail-fast 兜底，不靠超时误杀长回合。
+	 */
+	promptTimeoutMs?: number;
 	clientName?: string;
 	clientVersion?: string;
 }
@@ -50,23 +65,43 @@ interface JsonRpcRequest { jsonrpc: '2.0'; id: number; method: string; params?: 
 interface JsonRpcNotification { jsonrpc: '2.0'; method: string; params?: unknown }
 interface JsonRpcResponse { jsonrpc: '2.0'; id: number; result?: unknown; error?: { code: number; message: string; data?: unknown } }
 
+interface IPendingRequest {
+	resolve(value: never): void;
+	reject(error: Error): void;
+	timer?: ReturnType<typeof setTimeout>;
+}
+
 export class AcpClient {
 	private nextId = 1;
-	private readonly pending = new Map<number, { resolve(value: never): void; reject(error: Error): void }>();
+	private readonly pending = new Map<number, IPendingRequest>();
 	private readonly disposers: { dispose(): void }[] = [];
 	private disposed = false;
+	private transportClosedNotified = false;
 
 	constructor(
 		private readonly channel: IJsonLineChannel,
 		private readonly options: IAcpClientOptions = {},
 	) {
 		this.disposers.push(channel.onLine((line) => this.handleLine(line)));
-		this.disposers.push(channel.onClose(() => {
-			for (const { reject } of this.pending.values()) {
-				reject(new Error('ACP 通道已关闭'));
+		this.disposers.push(channel.onClose(() => this.handleTransportClosed()));
+	}
+
+	/**
+	 * 传输关闭（借鉴 agent-runtime runner 的 failAll 语义）：所有在途请求立即失败，
+	 * 不等任何超时；并通知上层收回“已连接”状态。只执行一次。
+	 */
+	private handleTransportClosed(): void {
+		for (const entry of this.pending.values()) {
+			if (entry.timer) {
+				clearTimeout(entry.timer);
 			}
-			this.pending.clear();
-		}));
+			entry.reject(new Error('ACP 通道已关闭（DSH 进程可能已退出）'));
+		}
+		this.pending.clear();
+		if (!this.transportClosedNotified) {
+			this.transportClosedNotified = true;
+			this.options.onTransportClosed?.();
+		}
 	}
 
 	/** 握手：initialize（+ DSH 接受的 authenticate，失败不阻断） */
@@ -114,7 +149,7 @@ export class AcpClient {
 		return this.request('session/prompt', {
 			sessionId,
 			prompt: [{ type: 'text', text }],
-		});
+		}, this.options.promptTimeoutMs ?? 0);
 	}
 
 	/** session/cancel 是通知（无响应） */
@@ -127,22 +162,38 @@ export class AcpClient {
 		for (const d of this.disposers) {
 			d.dispose();
 		}
-		for (const { reject } of this.pending.values()) {
-			reject(new Error('ACP 客户端已销毁'));
+		for (const entry of this.pending.values()) {
+			if (entry.timer) {
+				clearTimeout(entry.timer);
+			}
+			entry.reject(new Error('ACP 客户端已销毁'));
 		}
 		this.pending.clear();
 	}
 
 	// ---- JSON-RPC plumbing ----
 
-	private request<T = unknown>(method: string, params?: unknown): Promise<T> {
+	/**
+	 * @param timeoutMs 未显式传时用控制类默认超时（requestTimeoutMs，默认 30s）；
+	 * 传 0 表示不设超时（session/prompt 的默认，见 IAcpClientOptions.promptTimeoutMs）。
+	 */
+	private request<T = unknown>(method: string, params?: unknown, timeoutMs?: number): Promise<T> {
 		if (this.disposed) {
 			return Promise.reject(new Error('ACP 客户端已销毁'));
 		}
+		const effectiveTimeout = timeoutMs ?? this.options.requestTimeoutMs ?? 30_000;
 		const id = this.nextId++;
 		const message: JsonRpcRequest = { jsonrpc: '2.0', id, method, params };
 		return new Promise<T>((resolve, reject) => {
-			this.pending.set(id, { resolve: resolve as (value: never) => void, reject });
+			const entry: IPendingRequest = { resolve: resolve as (value: never) => void, reject };
+			if (effectiveTimeout > 0) {
+				entry.timer = setTimeout(() => {
+					if (this.pending.delete(id)) {
+						reject(new Error(`ACP 请求超时：${method} 在 ${effectiveTimeout}ms 内无响应（DSH 可能假死或已退出）`));
+					}
+				}, effectiveTimeout);
+			}
+			this.pending.set(id, entry);
 			this.channel.send(JSON.stringify(message));
 		});
 	}
@@ -177,6 +228,9 @@ export class AcpClient {
 				return;
 			}
 			this.pending.delete(id);
+			if (entry.timer) {
+				clearTimeout(entry.timer);
+			}
 			const error = message.error as JsonRpcResponse['error'];
 			if (error) {
 				entry.reject(new Error(`ACP 错误 ${error.code}: ${error.message}`));

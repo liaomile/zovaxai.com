@@ -24,11 +24,17 @@ import { AcpClient } from 'vs/workbench/contrib/deepseek/common/deepseekAcp';
 export class DeepSeekAgentService extends Disposable implements IDeepSeekAgentService {
 	declare readonly _serviceBrand: undefined;
 
+	/** 审批无人应答的失效时限：到时按拒绝结算（见 requestPermissionFromUi） */
+	private static readonly APPROVAL_TIMEOUT_MS = 120_000;
+
 	private readonly _onSessionUpdate = this._register(new Emitter<DeepSeekSessionUpdate>());
 	readonly onSessionUpdate = this._onSessionUpdate.event;
 
 	private readonly _onAcpAttached = this._register(new Emitter<void>());
 	readonly onAcpAttached = this._onAcpAttached.event;
+
+	private readonly _onAcpDetached = this._register(new Emitter<string>());
+	readonly onAcpDetached = this._onAcpDetached.event;
 
 	get acpAttached(): boolean {
 		return this.acpClient !== undefined;
@@ -40,7 +46,7 @@ export class DeepSeekAgentService extends Disposable implements IDeepSeekAgentSe
 	/** ACP 接入点：由宿主层（Agent Host 通道就绪后）注入；未注入时走本地骨架行为 */
 	private acpClient: AcpClient | undefined;
 	private acpCwd = '';
-	private readonly pendingApprovals = new Map<string, { resolve(approved: boolean): void }>();
+	private readonly pendingApprovals = new Map<string, { resolve(approved: boolean): void; timer?: ReturnType<typeof setTimeout> }>();
 
 	/**
 	 * 注入 ACP 客户端（其 onUpdate 应转发到本服务的事件流，onPermissionRequest 应走
@@ -52,16 +58,48 @@ export class DeepSeekAgentService extends Disposable implements IDeepSeekAgentSe
 		this._onAcpAttached.fire();
 	}
 
+	/**
+	 * 收回 ACP 接入（DSH 进程退出/传输关闭时由客户端的 onTransportClosed 经
+	 * bootstrap 调用）：清客户端、把所有挂起审批以“拒绝”结算（不留永挂 Promise，
+	 * 否则 agent 的这一回合会被审批永久堵死——审计实锤），并广播断开事件。
+	 */
+	detachAcpClient(reason: string): void {
+		const wasAttached = this.acpClient !== undefined;
+		this.acpClient = undefined;
+		for (const entry of this.pendingApprovals.values()) {
+			if (entry.timer) {
+				clearTimeout(entry.timer);
+			}
+			entry.resolve(false);
+		}
+		this.pendingApprovals.clear();
+		if (wasAttached) {
+			this._onAcpDetached.fire(reason);
+		}
+	}
+
 	/** 供 ACP 客户端的 onUpdate 回调使用：把通道回流的更新转发到本服务的事件流 */
 	handleAcpUpdate(update: DeepSeekSessionUpdate): void {
 		this._onSessionUpdate.fire(update);
 	}
 
-	/** 供 ACP 客户端的权限回调使用：把审批请求推给界面，等 answerApproval 应答 */
+	/**
+	 * 供 ACP 客户端的权限回调使用：把审批请求推给界面，等 answerApproval 应答。
+	 * 【P0 修复】审批必须有失效路径：超过 APPROVAL_TIMEOUT_MS 无人应答则按“拒绝”
+	 * 结算并回告 DSH——此前 Promise 永不结算，一次被忽略的审批能把整个会话回合
+	 * 永久堵死（审计实锤“审批 Promise 无失效路径”）。超时后迟到的应答自动作废
+	 * （answerApproval 找不到条目即忽略）。界面侧审批卡的自动消解是后续小改，
+	 * 不影响此处正确性：DSH 已按拒绝继续，用户再点旧卡也不会重复生效。
+	 */
 	requestPermissionFromUi(sessionId: string, requestId: string, title: string): Promise<boolean> {
 		this._onSessionUpdate.fire({ kind: 'approvalRequest', sessionId, requestId, title });
 		return new Promise<boolean>((resolve) => {
-			this.pendingApprovals.set(requestId, { resolve });
+			const timer = setTimeout(() => {
+				if (this.pendingApprovals.delete(requestId)) {
+					resolve(false);
+				}
+			}, DeepSeekAgentService.APPROVAL_TIMEOUT_MS);
+			this.pendingApprovals.set(requestId, { resolve, timer });
 		});
 	}
 
@@ -119,6 +157,9 @@ export class DeepSeekAgentService extends Disposable implements IDeepSeekAgentSe
 		const pending = this.pendingApprovals.get(answer.requestId);
 		if (pending) {
 			this.pendingApprovals.delete(answer.requestId);
+			if (pending.timer) {
+				clearTimeout(pending.timer);
+			}
 			pending.resolve(answer.approved);
 		}
 	}

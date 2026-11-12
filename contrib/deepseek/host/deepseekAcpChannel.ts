@@ -31,6 +31,15 @@ export class DeepSeekAcpChannel implements IJsonLineChannel {
 		await this.channel.call('spawn', options);
 	}
 
+	/** 取宿主侧缓存的 stderr 尾部（最近 200 行），拼进故障通知供诊断（P0 修复） */
+	async getStderrTail(): Promise<string> {
+		try {
+			return await this.channel.call<string>('getStderrTail');
+		} catch {
+			return '';
+		}
+	}
+
 	async kill(): Promise<void> {
 		await this.channel.call('kill');
 	}

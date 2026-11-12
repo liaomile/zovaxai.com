@@ -30,6 +30,11 @@ export interface IDeepSeekAgentService {
 	readonly acpAttached: boolean;
 	/** ACP 接入完成时触发（bootstrap 握手并注入客户端之后） */
 	readonly onAcpAttached: Event<void>;
+	/**
+	 * ACP 断开时触发（DSH 进程退出/传输关闭），参数为断开原因（P0 修复，2026-11-12）。
+	 * 界面据此回到“未连接”呈现；此前进程死了界面无感知、一直显示连着。
+	 */
+	readonly onAcpDetached: Event<string>;
 
 	/** 当前会话列表 */
 	listSessions(): Promise<IDeepSeekSession[]>;
